@@ -39,12 +39,12 @@ public:
     Heap();
     explicit Heap(const std::vector<int>& init_values);
     int ExtractTop();
-    int GetTop();
-    int GetSize();
+    int GetTop() const;
+    int GetSize() const;
     void Push(int data);
 
 private:
-    void Heapify();
+    void BuildHeap();
     void SiftUp(int idx);
     void SiftDown(int idx);
     std::vector<int> values;
@@ -54,7 +54,7 @@ Heap::Heap() {}
 
 Heap::Heap(const std::vector<int>& init_values) {
     values.assign(init_values.begin(), init_values.end());
-    Heapify();
+    BuildHeap();
 }
 
 void Heap::Push(int data) {
@@ -62,11 +62,11 @@ void Heap::Push(int data) {
     SiftUp(GetSize() - 1);
 }
 
-int Heap::GetSize() {
+int Heap::GetSize() const {
     return values.size();
 }
 
-int Heap::GetTop() {
+int Heap::GetTop() const {
     assert(GetSize() > 0);
     return values[0];
 }
@@ -80,7 +80,7 @@ int Heap::ExtractTop() {
     return return_value;
 }
 
-void Heap::Heapify() {
+void Heap::BuildHeap() {
     // last element have index GetSize() - 1
     // it's parent index is (GetSize() - 1 - 1) / 2 => GetSize() / 2 - 1
     for (int i = GetSize() / 2 - 1; i >= 0; i--) {

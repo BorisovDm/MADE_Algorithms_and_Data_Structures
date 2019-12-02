@@ -64,16 +64,9 @@ public:
     bool Remove(const std::string& key);
 
 private:
-    struct HashTableNode {
-        std::string key;
-        int hashCodeOrDeletedFlag = 0;
+    std::vector<std::string> table;
+    std::vector<bool> isDeleted;
 
-        explicit HashTableNode(std::string key_) : key(std::move(key_)) {}
-        explicit HashTableNode(std::string key_, int hashCode) :
-            key(std::move(key_)), hashCodeOrDeletedFlag(hashCode) {}
-    };
-
-    std::vector<HashTableNode*> table;
     Hasher hasher;
     void Rehash();
     unsigned int filledNodesNumber = 0;
@@ -81,13 +74,10 @@ private:
     unsigned int getHashStep(const std::string&) const;
 };
 
-HashTable::HashTable(int initial_size, const Hasher& _hasher) : table(initial_size, nullptr), hasher(_hasher) {}
+HashTable::HashTable(int initial_size, const Hasher& _hasher) :
+    table(initial_size, ""), isDeleted(initial_size, false), hasher(_hasher) {}
 
-HashTable::~HashTable() {
-    for (HashTableNode*& node : table) {
-        delete node;
-    }
-}
+HashTable::~HashTable() {}
 
 unsigned int HashTable::getHashCode(const std::string& key) const {
     return hasher(key, HASH_BASE_1);
@@ -102,10 +92,10 @@ bool HashTable::Remove(const std::string& key) {
     unsigned int hashStep = getHashStep(key);
     unsigned int index = hashCode % table.size();
 
-    while (table[index] != nullptr) {
-        if (table[index]->hashCodeOrDeletedFlag == hashCode && table[index]->key == key) {
-            table[index]->key = "";
-            table[index]->hashCodeOrDeletedFlag = -1;
+    while (table[index] != "" or isDeleted[index]) {
+        if (table[index] == key) {
+            table[index] = "";
+            isDeleted[index] = true;
             return true;
         }
         index = (index + hashStep) % table.size();
@@ -118,8 +108,8 @@ bool HashTable::Has(const std::string& key) const {
     unsigned int hashStep = getHashStep(key);
     unsigned int index = hashCode % table.size();
 
-    while (table[index] != nullptr) {
-        if (table[index]->hashCodeOrDeletedFlag == hashCode && table[index]->key == key) {
+    while (table[index] != "" or isDeleted[index]) {
+        if (table[index] == key) {
             return true;
         }
         index = (index + hashStep) % table.size();
@@ -133,12 +123,12 @@ bool HashTable::Add(const std::string& key) {
     unsigned int index = hashCode % table.size();
     int freeIndexToInsert = -1;
 
-    while (table[index] != nullptr) {
-        if (table[index]->hashCodeOrDeletedFlag == hashCode && table[index]->key == key) {
+    while (table[index] != "" or isDeleted[index]) {
+        if (table[index] == key) {
             return false;
         }
 
-        if (table[index]->hashCodeOrDeletedFlag == -1 && freeIndexToInsert < 0) {
+        if (isDeleted[index] && freeIndexToInsert < 0) {
             freeIndexToInsert = index;
         }
 
@@ -146,13 +136,13 @@ bool HashTable::Add(const std::string& key) {
     }
 
     if (freeIndexToInsert >= 0) {
-        table[freeIndexToInsert]->key = key;
-        table[freeIndexToInsert]->hashCodeOrDeletedFlag = hashCode;
+        table[freeIndexToInsert] = key;
+        isDeleted[freeIndexToInsert] = false;
     } else {
-        table[index] = new HashTableNode(key, hashCode);
+        table[index] = key;
+        filledNodesNumber++;
     }
 
-    filledNodesNumber++;
     if (4 * filledNodesNumber >= 3 * table.size()) {
         Rehash();
     }
@@ -160,32 +150,16 @@ bool HashTable::Add(const std::string& key) {
 }
 
 void HashTable::Rehash() {
-    std::vector<HashTableNode*> newTable(table.size() * 2, nullptr);
+    std::vector<std::string> oldTable = table;
+    table = std::vector<std::string>(oldTable.size() * 2, "");
+    isDeleted = std::vector<bool>(oldTable.size() * 2, false);
     filledNodesNumber = 0;
 
-    for (HashTableNode*& node : table) {
-        if (node != nullptr) {
-            if (node->hashCodeOrDeletedFlag != -1) {
-                unsigned int index = node->hashCodeOrDeletedFlag % newTable.size();
-
-                if (newTable[index] != nullptr) {
-                    unsigned int hashStep = getHashStep(node->key) % newTable.size();
-                    do {
-                        index = (index + hashStep) % newTable.size();
-                    } while (newTable[index] != nullptr);
-                }
-
-                newTable[index] = node;
-                filledNodesNumber++;
-            } else {
-                delete node;
-            }
-
-            node = nullptr;
+    for (const auto& key : oldTable) {
+        if (key != "") {
+            Add(key);
         }
     }
-
-    table = newTable;
 }
 
 

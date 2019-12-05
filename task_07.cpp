@@ -26,6 +26,7 @@
  */
 
 
+#include <cassert>
 #include <iostream>
 #include <stack>
 
@@ -67,7 +68,7 @@ int SplayTree::GetRootRightChildsNumber() const {
 }
 
 void SplayTree::Add(int value) {
-    if (!root) {
+    if (root == nullptr) {
         root = new TreeNode(value);
         return;
     }
@@ -76,23 +77,23 @@ void SplayTree::Add(int value) {
     while (true) {
         if (value < parent->key) { // left subtree
             parent->n_left_childs++;
-            if (parent->left) {
-                parent = parent->left;
-            } else {
+            if (parent->left == nullptr) {
                 parent->left = new TreeNode(value);
                 parent->left->parent = parent;
                 Splay(parent->left);
                 return;
+            } else {
+                parent = parent->left;
             }
         } else { // right subtree
             parent->n_right_childs++;
-            if (parent->right) {
-                parent = parent->right;
-            } else {
+            if (parent->right == nullptr) {
                 parent->right = new TreeNode(value);
                 parent->right->parent = parent;
                 Splay(parent->right);
                 return;
+            } else {
+                parent = parent->right;
             }
         }
     }
@@ -215,6 +216,12 @@ TreeNode* SplayTree::FindMax() const {
 void SplayTree::DeleteRoot() {
     TreeNode* exRoot = root;
 
+    if (root->left == nullptr && root->right == nullptr) {
+        delete root;
+        root = nullptr;
+        return;
+    }
+
     if (root->left == nullptr) {
         root = root->right;
     } else if (root->right == nullptr) {
@@ -227,6 +234,7 @@ void SplayTree::DeleteRoot() {
 
         root->right = rightSubtree;
         root->right->parent = root;
+        root->n_right_childs = root->right->n_right_childs + root->right->n_left_childs + 1;
     }
 
     root->parent = nullptr;
@@ -236,6 +244,7 @@ void SplayTree::DeleteRoot() {
 }
 
 void SplayTree::DeleteByOrderNumber(int k) {
+    assert(root != nullptr && root->n_left_childs + root->n_right_childs + 1 > k);
     Splay(SearchByOrderNumber(k));
     DeleteRoot();
 }
